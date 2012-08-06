@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 using namespace std;
+	#define  __FUNC__ __func__
 
 	typedef int ppp();
 template<class t>
@@ -36,6 +37,13 @@ int main(int argc, char const *argv[])
 	//absInt s(i);
 	unsigned int ui = test(absInt());
 	cout<<ui<<endl;
+
+	constexpr int sizez=alignof (long long);
+	cout<<sizez;
+	cout<<__FUNC__<<endl;
+	cout<<__LINE__<<endl;
+	cout<<__FILE__<<endl;
+
 
 	return 0;
 }
