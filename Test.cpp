@@ -1,24 +1,26 @@
 #include <iostream>
-#include <vector>
-#include <memory>
+#include <random>
+#include <functional>
 using namespace std;
+
 int main(int argc, char const *argv[])
 {
-	/* code */
-	std::vector<unique_ptr<int>> v;
-	v.push_back(unique_ptr<int>(new int(3)));
-   cout<<v.capacity()<<" "<<v.size()<<endl;
-	v.push_back(unique_ptr<int>(new int(4)));
-   cout<<v.capacity()<<" "<<v.size()<<endl;
-	v.push_back(unique_ptr<int>(new int(5)));
-	auto c=unique_ptr<int>(new int(4));
-   cout<<v.capacity()<<" "<<v.size()<<endl;
-	v.push_back(unique_ptr<int>(new int(6)));
-   cout<<v.capacity()<<" "<<v.size()<<endl;
-   cout<<(v[2]<v[3]);
-	for(auto& temp:v)
-	{
-		cout<<(temp<c)<<" ";
-	}
+
+	default_random_engine re;   // the default engine
+	normal_distribution<double> nd(31 /* mean */,8 /* sigma */);
+
+	auto norm = bind(nd, re);
+
+	vector<int> mn(64);
+
+
+		for (int i = 0; i<1200; ++i) ++mn[round(norm())]; // generate
+	
+		for (int i = 0; i<mn.size(); ++i) {
+			cout << i << '\t';
+			for (int j=0; j<mn[i]; ++j) cout << '*';
+			cout << '\n';
+		}
+	
 	return 0;
 }
