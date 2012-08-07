@@ -1,51 +1,24 @@
 #include <iostream>
-#include <string>
+#include <vector>
+#include <memory>
 using namespace std;
-	#define  __FUNC__ __func__
-
-	typedef int ppp();
-template<class t>
-int test(t f)
-{
-	return f();
-}
-	class absInt
-	{
-	public:
-		// absInt(int c)
-		// {
-		// 		val=c;
-		// }
-		int operator()()
-		{
-			return 3;
-		}
-		//int val;
-	};
 int main(int argc, char const *argv[])
 {
-	cout<<__cplusplus<<endl;
-
-	cout<<"hello world"<<endl;
-	string mytest=R"hhhhhhhhhh(hello\\\\sdfsdf)()()()()()""""""""))hhhhhhhhhh";
-	cout<<mytest<<endl;
-
-
-
-	int i=-42;
-
-	//absInt s(i);
-	unsigned int ui = test(absInt());
-	cout<<ui<<endl;
-
-	constexpr int sizez=alignof (long long);
-	cout<<sizez;
-	cout<<__FUNC__<<endl;
-	cout<<__LINE__<<endl;
-	cout<<__FILE__<<endl;
-
-	cout<<1<<endl;//it is me
-
-
+	/* code */
+	std::vector<unique_ptr<int>> v;
+	v.push_back(unique_ptr<int>(new int(3)));
+   cout<<v.capacity()<<" "<<v.size()<<endl;
+	v.push_back(unique_ptr<int>(new int(4)));
+   cout<<v.capacity()<<" "<<v.size()<<endl;
+	v.push_back(unique_ptr<int>(new int(5)));
+	auto c=unique_ptr<int>(new int(4));
+   cout<<v.capacity()<<" "<<v.size()<<endl;
+	v.push_back(unique_ptr<int>(new int(6)));
+   cout<<v.capacity()<<" "<<v.size()<<endl;
+   cout<<(v[2]<v[3]);
+	for(auto& temp:v)
+	{
+		cout<<(temp<c)<<" ";
+	}
 	return 0;
 }
