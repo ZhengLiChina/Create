@@ -6,5 +6,6 @@ test.exe:test.o
 test.o:test.cpp
 	g++ -std=c++11 -c test.cpp -o $@
 
+# use nmake (got from VS2010) on windows 8
 clean:
 	del test.exe *.o
