@@ -1,4 +1,7 @@
-all:test.exe
+all:test.exe newtest.exe
+
+newtest.exe:test.cpp
+	g++ -std=c++11 newtest.cpp -o $@
 
 test.exe:test.o
 	g++ -std=c++11 test.o -o $@
