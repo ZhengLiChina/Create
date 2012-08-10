@@ -13,7 +13,6 @@ int main(int argc, char const *argv[])
 
 	vector<int> mn(64);
 
-
 		for (int i = 0; i<1200; ++i) ++mn[round(norm())]; // generate
 	
 		for (int i = 0; i<mn.size(); ++i) {
