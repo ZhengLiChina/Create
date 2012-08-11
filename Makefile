@@ -1,7 +1,7 @@
-all:test.exe newtest.exe
+all:test.exe pop3test.exe
 
-newtest.exe:newtest.cpp
-	g++ -std=c++11 newtest.cpp -o $@
+pop3test.exe:pop3test.cpp
+	g++ -std=c++11  pop3test.cpp -lws2_32 -o $@
 
 test.exe:test.o
 	g++ -std=c++11 test.o -o $@
