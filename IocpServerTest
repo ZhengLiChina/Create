@@ -1,0 +1,177 @@
+#include<iostream>
+#include<WinSock2.h>
+#include<process.h>
+#include<map>
+#include<cstring>
+
+using namespace std;
+
+#pragma comment(lib,"ws2_32.lib")
+
+const int port=6000;
+const int messageSize=1024;
+const char* localAddr="127.0.0.1";
+
+typedef DWORD ID;
+
+typedef enum
+{
+  SERVER_RECV,
+	SERVER_SEND
+}OPERATION_TYPE;
+
+typedef struct
+{
+	WSAOVERLAPPED overlap;
+	ID id;//THIS ONE'S ID
+	WSABUF buffer;
+	char szMessage[messageSize];
+	DWORD numberOfBytesRecvd;
+	DWORD flags;
+	OPERATION_TYPE operationType;
+}PER_IO_OPERATION_DATA,*LPPER_IO_OPERATION_DATA;
+
+UINT WINAPI ServerThread(void*);
+
+map<ID,SOCKET> socketMap;
+UINT totalConn=0;
+
+int main(int argc,char* argv[])
+{
+	WSADATA		wsaData;
+	SOCKET		sListen, sClient;
+	SOCKADDR_IN	local, client;
+	int	iaddrSize = sizeof(SOCKADDR_IN);
+	HANDLE	CompletionPort = INVALID_HANDLE_VALUE;
+	SYSTEM_INFO	systeminfo;
+	LPPER_IO_OPERATION_DATA lpPerIOData = NULL;
+
+
+	if(WSAStartup(MAKEWORD(2,2),&wsaData))
+		return -1;//ERROR
+
+	CompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+
+	if (LOBYTE(wsaData.wVersion)!=2||HIBYTE(wsaData.wVersion)!=2)   
+	{   
+		WSACleanup();
+		return -2;//VERSION ERROR   
+	} 
+
+	// Create worker thread
+	GetSystemInfo(&systeminfo);
+
+	for (DWORD i = 0; i < systeminfo.dwNumberOfProcessors; i++)
+	{
+		UINT nThreadID = 0;
+		HANDLE hThread=(HANDLE)_beginthreadex(NULL,0,ServerThread,(void*)CompletionPort,CREATE_SUSPENDED,(UINT*)&nThreadID);
+		if( NULL == reinterpret_cast<UINT>(hThread)|| 0xFFFFFFFF == reinterpret_cast<UINT>(hThread) )
+		{
+			break;//error
+		}
+		::ResumeThread(hThread);//start
+	}
+
+	// Create listening socket
+	sListen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	// Bind
+	local.sin_addr.S_un.S_addr=inet_addr(localAddr);
+	local.sin_family = AF_INET;
+	local.sin_port = htons(port);
+	bind(sListen, (struct sockaddr *)&local, sizeof(SOCKADDR_IN));
+
+	listen(sListen,SOMAXCONN);
+
+	cout<<systeminfo.dwNumberOfProcessors<<" PROCCESSOR!"<<endl;
+	cout<<inet_ntoa(local.sin_addr)<<endl;
+
+	while (TRUE)
+	{
+		// Accept a connection
+		sClient = accept(sListen, (struct sockaddr *)&client, &iaddrSize);
+		totalConn++;
+		socketMap[totalConn]=sClient;
+		printf("Accepted client:%s:%d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
+		cout<<totalConn<<" connections!"<<endl;
+
+		// Associate the newly arrived client socket with completion port
+		CreateIoCompletionPort((HANDLE)sClient, CompletionPort, (DWORD)sClient, 0);
+
+		// Launch an asynchronous operation for new arrived connection
+		lpPerIOData = (LPPER_IO_OPERATION_DATA)malloc(sizeof(PER_IO_OPERATION_DATA));
+		memset(lpPerIOData,0,sizeof(PER_IO_OPERATION_DATA));
+		lpPerIOData->buffer.len = messageSize;
+		lpPerIOData->buffer.buf = lpPerIOData->szMessage;
+		lpPerIOData->operationType =SERVER_RECV;
+		lpPerIOData->id=totalConn;
+		WSARecv(sClient,
+			&lpPerIOData->buffer,
+			1,
+			&lpPerIOData->numberOfBytesRecvd,
+			&lpPerIOData->flags,
+			&lpPerIOData->overlap,
+			NULL);
+	}
+
+	PostQueuedCompletionStatus(CompletionPort, 0xFFFFFFFF, 0, NULL);
+	CloseHandle(CompletionPort);
+	closesocket(sListen);
+	WSACleanup();
+}
+
+UINT WINAPI ServerThread(LPVOID CompletionPortID)
+{
+	HANDLE                  CompletionPort=(HANDLE)CompletionPortID;
+	DWORD                   dwBytesTransferred;
+	SOCKET                  sClient;
+	LPPER_IO_OPERATION_DATA lpPerIOData = NULL;
+
+	while (TRUE)
+	{
+		GetQueuedCompletionStatus(
+			CompletionPort,
+			&dwBytesTransferred,
+			(PULONG_PTR)&sClient,
+			(LPOVERLAPPED *)&lpPerIOData,
+			INFINITE);
+		if (dwBytesTransferred == 0xFFFFFFFF)
+		{
+			return 0;
+		}
+
+		if (lpPerIOData->operationType == SERVER_RECV)
+		{
+			if (dwBytesTransferred == 0)
+			{
+				// Connection was closed by client
+				socketMap.erase(lpPerIOData->id);
+				totalConn--;
+				closesocket(sClient);
+				free(lpPerIOData);       
+			}
+			else
+			{
+				lpPerIOData->szMessage[dwBytesTransferred] = '\0';
+				for (auto i=socketMap.begin();i!=socketMap.end();++i)
+				{
+					send(i->second, lpPerIOData->szMessage, dwBytesTransferred, 0);
+				}
+
+				// Launch another asynchronous operation for sClient
+				memset(lpPerIOData, 0, sizeof(PER_IO_OPERATION_DATA));
+				lpPerIOData->buffer.len = messageSize;
+				lpPerIOData->buffer.buf = lpPerIOData->szMessage;
+				lpPerIOData->operationType = SERVER_RECV;
+				WSARecv(sClient,
+					&lpPerIOData->buffer,
+					1,
+					&lpPerIOData->numberOfBytesRecvd,
+					&lpPerIOData->flags,
+					&lpPerIOData->overlap,
+					NULL);
+			}
+		}
+	}
+	return 0;
+}
